@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pomodoro Timer</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #222;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .container {
+      width: 840px;
+      height: 420px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+      background: url("assets/background.png") no-repeat center center/cover;
+    }
+
+    .container::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.55);
+      z-index: 0;
+    }
+
+    #timer {
+      font-size: 5em;
+      font-weight: 500;
+      margin-bottom: 20px;
+      margin-top: 20px;
+      z-index: 1;
+    }
+
+    .modes,
+    .controls {
+      margin: 10px 0;
+      z-index: 1;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+    }
+
+    button {
+      background: transparent;
+      border: 2px solid white;
+      color: white;
+      padding: 10px 10px;
+      margin: 5px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .start {
+      padding: 10px 20px;
+    }
+
+    button:hover {
+      background: white;
+      color: black;
+    }
+
+    .active {
+      background: white;
+      color: black;
+    }
+
+    .reset-btn {
+      background: none;
+      border: none;
+      padding: 0;
+    }
+
+    .reset-btn img {
+      width: 40px;
+      height: 40px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .reset-btn img:hover {
+      transform: scale(1.1);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="modes">
+      <button id="pomodoroBtn" onclick="setMode('pomodoro')">Pomodoro</button>
+      <button id="shortBtn" onclick="setMode('short')">Short Break</button>
+      <button id="longBtn" onclick="setMode('long')">Long Break</button>
+    </div>
+
+    <div id="timer">25:00</div>
+
+    <div class="controls">
+      <button onclick="toggleTimer()" id="startPauseBtn" class="start">Start</button>
+      <button class="reset-btn" onclick="resetTimer()">
+        <img src="assets/reset.png" alt="Reset">
+      </button>
+    </div>
+  </div>
+
+  <script>
+    let timer;
+    let timeLeft = 25 * 60;
+    let isRunning = false;
+    let currentMode = "pomodoro";
+
+    const timerDisplay = document.getElementById("timer");
+    const startPauseBtn = document.getElementById("startPauseBtn");
+    const buttons = {
+      pomodoro: document.getElementById("pomodoroBtn"),
+      short: document.getElementById("shortBtn"),
+      long: document.getElementById("longBtn"),
+    };
+
+    function updateDisplay() {
+      const minutes = String(Math.floor(timeLeft / 60)).padStart(2, "0");
+      const seconds = String(timeLeft % 60).padStart(2, "0");
+      timerDisplay.textContent = `${minutes}:${seconds}`;
+    }
+
+    function setMode(mode) {
+      clearInterval(timer);
+      isRunning = false;
+      startPauseBtn.textContent = "Start";
+      currentMode = mode;
+
+      if (mode === "pomodoro") timeLeft = 25 * 60;
+      if (mode === "short") timeLeft = 5 * 60;
+      if (mode === "long") timeLeft = 10 * 60;
+
+      Object.values(buttons).forEach(btn => btn.classList.remove("active"));
+      buttons[mode].classList.add("active");
+
+      updateDisplay();
+    }
+
+    function toggleTimer() {
+      if (isRunning) {
+        pauseTimer();
+      } else {
+        startTimer();
+      }
+    }
+
+    function startTimer() {
+      if (isRunning) return;
+      isRunning = true;
+      startPauseBtn.textContent = "Pause";
+      timer = setInterval(() => {
+        if (timeLeft > 0) {
+          timeLeft--;
+          updateDisplay();
+        } else {
+          clearInterval(timer);
+          isRunning = false;
+          startPauseBtn.textContent = "Start";
+          playMelodicBeep();
+        }
+      }, 1000);
+    }
+
+    function pauseTimer() {
+      clearInterval(timer);
+      isRunning = false;
+      startPauseBtn.textContent = "Start";
+    }
+
+    function resetTimer() {
+      clearInterval(timer);
+      isRunning = false;
+      setMode("pomodoro");
+    }
+
+    function playMelodicBeep() {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const gain = ctx.createGain();
+      gain.connect(ctx.destination);
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+
+      const frequencies = [440, 554, 659]; // notas do beep
+      const duration = 300; // duração de cada beep em ms
+      const interval = 500; // intervalo entre os beeps
+      const totalTime = 6000; // 6 segundos
+      const repeatCount = Math.floor(totalTime / interval);
+
+      for (let i = 0; i < repeatCount; i++) {
+        setTimeout(() => {
+          frequencies.forEach(freq => {
+            const osc = ctx.createOscillator();
+            osc.type = "sine";
+            osc.frequency.value = freq;
+            osc.connect(gain);
+            osc.start();
+            osc.stop(ctx.currentTime + duration / 1000);
+          });
+        }, i * interval);
+      }
+
+      // fade-out suave ao final
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + totalTime / 1000);
+    }
+
+
+
+    setMode("pomodoro");
+  </script>
+</body>
+
+</html>
